@@ -6,8 +6,6 @@ from collections import defaultdict, deque
 from typing import List, Dict,Annotated
 from fastapi import FastAPI, HTTPException, Query
 
-
-
 # Fetch two random words with the specified length
 def fetchRandomWords(length: int) -> List[str]:
     url = f"https://random-word-api.vercel.app/api?words=2&length={length}"
@@ -41,7 +39,7 @@ def buildAdjacencyList(wordList: List[str]) -> defaultdict:
     return nei
 
 
-# Single-direction BFS to find the shortest transformation path
+# Single-direction BFS
 def bfsWordLadder(beginWord: str, endWord: str, wordList: List[str]) -> Dict:
     if endWord not in wordList:
         return {"optimal": 0, "path": []}
@@ -65,7 +63,7 @@ def bfsWordLadder(beginWord: str, endWord: str, wordList: List[str]) -> Dict:
 
     return {"optimal": 0, "path": []}
 
-# Bidirectional BFS (same as in your original code)
+# Bidirectional BFS
 def bidirectionalBfsWordLadder(beginWord: str, endWord: str, wordList: List[str]) -> Dict:
     if endWord not in wordList:
         return {"optimal": 0, "path": []}
@@ -123,7 +121,6 @@ def hello_world():
     return template
 
 
-# FastAPI route for GET /game
 @app.get("/game")
 async def game(length: int = Query(3, ge=3, le=10), blind: str = Query("bfs", pattern="^(bfs|bidirectional)$")):
     while True:
