@@ -11,6 +11,7 @@ pipeline {
         stage('Create Image') {
             steps {
                 sh "ls -la"
+                sh "systemctl status docker"
                 sh "docker build -t api_image ."
             }
         }
