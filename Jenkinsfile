@@ -10,6 +10,7 @@ pipeline {
     stages {
         stage('Create Image') {
             steps {
+                sh "ls -la"
                 sh "docker build -t api_image ."
             }
         }
