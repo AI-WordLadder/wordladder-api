@@ -50,7 +50,7 @@ def heuristic(beginWord : str , endWord: str) -> int:
 def fn(gn:int ,hn:int):
     return gn+hn
 
-#A* heuristic search
+# A* heuristic search
 def aStar (beginWord : str, endWord: str, wordList: List[str])-> Dict:
     if endWord not in wordList:
         return {"optimal":0,"path":[]}
@@ -161,7 +161,7 @@ def hello_world():
 
 
 @app.get("/game")
-async def game(length: int = Query(5, ge=3, le=10), blind: str = Query("", pattern="^(astar)$")):
+async def game(length: int = Query(3, ge=3, le=10), blind: str = Query("bfs", pattern="^(bfs|bidirectional)$"), heuristic: str = Query("bfs", pattern="^(bfs|bidirectional)$")):
     while True:
         # Fetch random words and word list
         startWord, endWord = fetchRandomWords(length)
