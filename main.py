@@ -5,6 +5,7 @@ import sys
 from collections import defaultdict, deque
 from typing import List, Dict,Annotated
 from fastapi import FastAPI, HTTPException, Query
+from heapq import heappop,heappush
 
 # Fetch two random words with the specified length
 def fetchRandomWords(length: int) -> List[str]:
@@ -38,6 +39,44 @@ def buildAdjacencyList(wordList: List[str]) -> defaultdict:
             nei[pattern].append(word)
     return nei
 
+#find hamming distance between two string:
+def heuristic(beginWord : str , endWord: str) -> int:
+    hn = 0
+    for i in range(len(endWord)):
+        if beginWord[i] != endWord[i]:
+            hn += 1
+    return hn
+
+def fn(gn:int ,hn:int):
+    return gn+hn
+
+# A* heuristic search
+def aStar (beginWord : str, endWord: str, wordList: List[str])-> Dict:
+    if endWord not in wordList:
+        return {"optimal":0,"path":[]}
+
+    visited = set([beginWord])
+    nei = buildAdjacencyList(wordList)
+    startFn = heuristic(beginWord,endWord)
+    heap = [(startFn,beginWord,[beginWord])]
+
+    while heap:
+        _ , startWord, path = heappop(heap)
+        gn = len(path)
+
+        if startWord == endWord:
+            return {"optimal":gn,"path":path}
+        
+        for j in range(len(startWord)):
+            pattern = startWord[:j] + "*" + startWord[j + 1:]
+            for neiWord in nei[pattern]:
+                if neiWord not in visited:
+                    visited.add(neiWord)
+                    hn = heuristic(neiWord,endWord)
+                    heappush(heap,(fn(gn,hn),neiWord,path+[neiWord]))
+
+    return {"optimal":0,"path":[]}
+    
 
 # Single-direction BFS
 def bfsWordLadder(beginWord: str, endWord: str, wordList: List[str]) -> Dict:
@@ -122,7 +161,7 @@ def hello_world():
 
 
 @app.get("/game")
-async def game(length: int = Query(3, ge=3, le=6), blind: str = Query("bfs", pattern="^(bfs|bidirectional)$")):
+async def game(length: int = Query(3, ge=3, le=10), blind: str = Query("bfs", pattern="^(bfs|bidirectional)$"), heuristic: str = Query("bfs", pattern="^(bfs|bidirectional)$")):
     while True:
         # Fetch random words and word list
         startWord, endWord = fetchRandomWords(length)
@@ -133,6 +172,11 @@ async def game(length: int = Query(3, ge=3, le=6), blind: str = Query("bfs", pat
         if blind == "bfs":
             result, time_taken, memory_used = measure(bfsWordLadder, startWord, endWord, wordList)
             technique = "BFS"
+
+        elif blind == "astar":
+            result,time_taken,memory_used = measure(aStar, startWord, endWord, wordList)
+            technique = "A* search"
+            
         else:
             result, time_taken, memory_used = measure(bidirectionalBfsWordLadder, startWord, endWord, wordList)
             technique = "Bidirectional BFS"
