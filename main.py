@@ -122,7 +122,7 @@ def hello_world():
 
 
 @app.get("/game")
-async def game(length: int = Query(3, ge=3, le=10), blind: str = Query("bfs", pattern="^(bfs|bidirectional)$")):
+async def game(length: int = Query(3, ge=3, le=6), blind: str = Query("bfs", pattern="^(bfs|bidirectional)$")):
     while True:
         # Fetch random words and word list
         startWord, endWord = fetchRandomWords(length)
