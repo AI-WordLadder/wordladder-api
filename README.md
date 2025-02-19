@@ -45,7 +45,7 @@ Use `uvicorn` to start the server:
     "time": "0.1160 sec"
   },
   "heuristic": {
-    "technique": "A*",
+    "technique": "A* Search",
     "startword": "reseal",
     "endword": "dubbed",
     "optimal": 12,
