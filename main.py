@@ -140,13 +140,6 @@ def bidirectionalBfsWordLadder(beginWord: str, endWord: str, wordList: List[str]
 
 
 # Measure execution time and memory usage
-# def measure(func, *args):
-#     start_time = time.time()
-#     result = func(*args)
-#     end_time = time.time()
-#     memory_usage = sum(sys.getsizeof(obj) for obj in locals().values())
-#     return result, end_time - start_time, memory_usage / 1024  # Convert memory usage to KB
-
 def measure(func, *args):
     tracemalloc.start()  # Start tracking memory
     start_time = time.time()
@@ -229,7 +222,6 @@ def check_word(word: str = Query(..., min_length=1),previous: str = Query(..., m
             "word": word,
             "valid": True,
             "message": f"The word '{word}' is valid.",
-            "previous_check": f"The previous word '{previous}' is valid and differs by one letter.",
             "change": change_index
         }
     except Exception as e:
@@ -238,51 +230,122 @@ def check_word(word: str = Query(..., min_length=1),previous: str = Query(..., m
 
 
 @app.get("/game")
-async def game(length: int = Query(3, ge=3, le=6), blind: str = Query("bfs", pattern="^(bfs|bidirectional)$")):
-    while True:
-        # Fetch random words and word list
-        startWord, endWord = fetchRandomWords(length)
-        wordList = fetchWordList(length)
-        print(f"Trying Start Word: {startWord}, End Word: {endWord}")
+async def game(
+    length: Optional[int] = Query(None, ge=3, le=6),
+    blind: str = Query("bfs", pattern="^(bfs|bidirectional)$"),
+    startWord: Optional[str] = Query(None),
+    endWord: Optional[str] = Query(None),
+):
+    try:
+        user_provided_start = startWord is not None
+        user_provided_end = endWord is not None
 
-        # Blind Search
-        if blind == "bfs":
-            result, time_taken, memory_used = measure(bfsWordLadder, startWord, endWord, wordList)
-            technique = "BFS"
-        elif blind == "bidirectional":
-            result, time_taken, memory_used = measure(bidirectionalBfsWordLadder, startWord, endWord, wordList)
-            technique = "Bidirectional BFS"
-            
-        # If no path is found , retry as quick as possible
-        if result["optimal"] <= 0:
-            print("No valid transformation found. Retrying...\n")
-            continue
-        
-        blind_result = {
+        while True:  # Keep retrying if no valid path is found
+            # Determine word length
+            if startWord and endWord:
+                if len(startWord) != len(endWord):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="StartWord and EndWord must have the same length.",
+                    )
+                word_length = len(startWord)
+            elif startWord:
+                word_length = len(startWord)
+            elif endWord:
+                word_length = len(endWord)
+            else:
+                word_length = length or 4  # Default length if none provided
+
+            # Fetch word list
+            wordList = fetchWordList(word_length)
+            if not wordList:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No word list found for length {word_length}.",
+                )
+
+            # Validate provided words
+            if startWord and startWord not in wordList:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"StartWord '{startWord}' is not in the word list.",
+                )
+
+            if endWord and endWord not in wordList:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"EndWord '{endWord}' is not in the word list.",
+                )
+
+            # Generate missing words
+            if not startWord:
+                startWord, _ = fetchRandomWords(word_length)
+            if not endWord:
+                _, endWord = fetchRandomWords(word_length)
+
+            print(f"Trying Start Word: {startWord}, End Word: {endWord}")
+
+            # Perform blind search
+            if blind == "bfs":
+                result, time_taken, memory_used = measure(
+                    bfsWordLadder, startWord, endWord, wordList
+                )
+                technique = "BFS"
+            else:
+                result, time_taken, memory_used = measure(
+                    bidirectionalBfsWordLadder, startWord, endWord, wordList
+                )
+                technique = "Bidirectional BFS"
+
+            # If no valid path is found, retry **only missing words**
+            if result["optimal"] <= 0:
+                print("No valid transformation found. Retrying...\n")
+
+                # If both words were user-provided, we cannot regenerate them
+                if user_provided_start and user_provided_end:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"No valid path found between '{startWord}' and '{endWord}'.",
+                    )
+
+                # Regenerate missing words only
+                if not user_provided_start:
+                    startWord, _ = fetchRandomWords(word_length)
+                if not user_provided_end:
+                    _, endWord = fetchRandomWords(word_length)
+
+                continue  # Retry with the new values
+
+            # Store results
+            blind_result = {
                 "technique": technique,
                 "startword": startWord,
                 "endword": endWord,
                 "optimal": result["optimal"],
                 "path": result["path"],
                 "space": f"{memory_used:.2f} KB",
-                "time": f"{time_taken:.4f} sec"
+                "time": f"{time_taken:.4f} sec",
             }
-            
-        # Heuristic Search
-        result,time_taken,memory_used = measure(aStar, startWord, endWord, wordList)
-        technique = "A* Search"
-        
-        heuristic_result = {
-            "technique": technique,
-            "startword": startWord,
-            "endword": endWord,
-            "optimal": result["optimal"],
-            "path": result["path"],
-            "space": f"{memory_used:.2f} KB",
-            "time": f"{time_taken:.4f} sec"
-        }
-        
-        return {"blind":blind_result, "heuristic":heuristic_result}
 
+            # Heuristic Search (A* Search)
+            result, time_taken, memory_used = measure(
+                aStar, startWord, endWord, wordList
+            )
 
+            heuristic_result = {
+                "technique": "A* Search",
+                "startword": startWord,
+                "endword": endWord,
+                "optimal": result["optimal"],
+                "path": result["path"], 
+                "space": f"{memory_used:.2f} KB",
+                "time": f"{time_taken:.4f} sec",
+            }
+
+            return {"blind": blind_result, "heuristic": heuristic_result}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"An unexpected error occurred: {str(e)}"
+        )
 
