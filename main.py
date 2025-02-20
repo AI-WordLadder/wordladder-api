@@ -180,26 +180,7 @@ app = FastAPI()
 
 @app.get("/")
 def hello_world():
-    template ={
-                "blind": {
-                    "technique": "BFS",
-                    "startword": "reseal",
-                    "endword": "dubbed",
-                    "optimal": 12,
-                    "path": ["reseal", "reseat", "resent", "resend", "reseed", "rested", "tested", "tasted", "tauted", "dauted", "daubed", "dabbed", "dubbed"],
-                    "space": "0.45 KB",
-                    "time": "0.1160 sec"
-                },
-                "heuristic": {
-                    "technique": "A*",
-                    "startword": "reseal",
-                    "endword": "dubbed",
-                    "optimal": 12,
-                    "path": [{"word":"reseat","change":2}, {"word":"reseat","change":2}, "resent", "resend", "reseed", "rested", "tested", "tasted", "tauted", "dauted", "daubed", "dabbed", "dubbed"],
-                    "space": "0.45 KB",
-                    "time": "0.1160 sec"
-                }
-            }
+    template ={"blind":{"technique":"BFS","startword":"poke","endword":"blow","optimal":6,"path":[{"poke":0},{"pole":2},{"bole":0},{"bolt":3},{"boot":2},{"blot":1},{"blow":3}],"space":"1890.75 KB","time":"0.1766 sec"},"heuristic":{"technique":"A* Search","startword":"poke","endword":"blow","optimal":6,"path":[{"poke":0},{"pole":2},{"bole":0},{"bolt":3},{"boot":2},{"blot":1},{"blow":3}],"space":"1351.89 KB","time":"0.0660 sec"}}
     return template
 
 @app.get("/check")
@@ -208,6 +189,15 @@ def check_word(word: str = Query(..., min_length=1),previous: str = Query(..., m
         wordList = fetchWordList(len(word))
         if not wordList:
             raise HTTPException(status_code=404, detail=f"No word list found for length {len(word)}.")
+        
+        # Check word diff by one letter
+        if not is_one_letter_different(word, previous):
+            return {
+                "word": word,
+                "valid": False,
+                "message": "Cannot change more than 1 character"
+            }
+            
         # Check word is in word list
         if word not in wordList:
             return {
@@ -216,13 +206,6 @@ def check_word(word: str = Query(..., min_length=1),previous: str = Query(..., m
                 "reason": "Not in word list"
             }
             
-        # Check word diff by one letter
-        if not is_one_letter_different(word, previous):
-            return {
-                "word": word,
-                "valid": False,
-                "message": "Cannot change more than 1 character"
-            }
             
         # Find the diff index
         change_index = find_differing_index(word, previous)
@@ -241,18 +224,18 @@ def check_word(word: str = Query(..., min_length=1),previous: str = Query(..., m
 
 @app.get("/game")
 async def game(
-    length: Optional[int] = Query(None, ge=3, le=6),
-    blind: Optional[str] = Query(None, pattern="^(bfs|bidirectional)$"),
+    length: Optional[int] = Query(None, ge=3, le=6), # Word length can be 3 - 6
+    blind: Optional[str] = Query("bfs", pattern="^(bfs|bidirectional)$"),
     startWord: Optional[str] = Query(None),
     endWord: Optional[str] = Query(None),
-    heuristic:Optional[str] = Query(None,pattern="^(astar)$")
+    heuristic:Optional[str] = Query("astar",pattern="^(astar)$")
 ):
 
     #manual play
-    if not any([blind, heuristic, startWord, endWord]):
-            word_length = length or 4  # Default length = 4 ถ้าไม่ได้กำหนด
-            startWord, endWord = fetchRandomWords(word_length)
-            return {"startword": startWord, "endword": endWord}
+    # if not any([blind, heuristic, startWord, endWord]):
+    #         word_length = length or 4  # Default length = 4 ถ้าไม่ได้กำหนด
+    #         startWord, endWord = fetchRandomWords(word_length)
+    #         return {"startword": startWord, "endword": endWord}
 
     try:
         user_provided_start = startWord is not None
@@ -304,8 +287,8 @@ async def game(
 
             print(f"Trying Start Word: {startWord}, End Word: {endWord}")
 
-            # Perform blind search
-            if blind == "bfs":
+            # Blind search
+            if blind.lower() == "bfs":
                 result, time_taken, memory_used = measure(
                     bfsWordLadder, startWord, endWord, wordList
                 )
@@ -318,8 +301,7 @@ async def game(
                     "space": f"{memory_used:.2f} KB",
                     "time": f"{time_taken:.4f} sec",
                 }
-            #
-            if blind == "bidirectional":
+            elif blind.lower() == "bidirectional":
                 result, time_taken, memory_used = measure(
                     bidirectionalBfsWordLadder, startWord, endWord, wordList
                 )
