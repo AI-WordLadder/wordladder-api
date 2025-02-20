@@ -61,7 +61,7 @@ def aStar (beginWord : str, endWord: str, wordList: List[str])-> Dict:
     visited = {beginWord:0}
     nei = buildAdjacencyList(wordList)
     startFn = heuristic(beginWord,endWord)
-    heap = [(startFn,beginWord,0,[{beginWord:0}])]
+    heap = [(startFn,beginWord,0,[{beginWord:None}])]
 
     while heap:
         _ , startWord,gn, path= heappop(heap)
@@ -92,7 +92,7 @@ def bfsWordLadder(beginWord: str, endWord: str, wordList: List[str]) -> Dict:
     wordList.append(beginWord)
     nei = buildAdjacencyList(wordList)
     visited = set([beginWord])
-    queue = deque([(beginWord, [{beginWord:0}])])
+    queue = deque([(beginWord, [{beginWord:None}])])
 
     while queue:
         word, path = queue.popleft()
