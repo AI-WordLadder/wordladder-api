@@ -25,7 +25,7 @@ def fetchRandomWords(length: int) -> List[str]:
 
 # Fetch a list of random words with the specified length
 def fetchWordList(length: int) -> List[str]:
-    url = f"http://localhost:9001/word?length={length}&number=180000"
+    url = f"https://random-word-api.herokuapp.com/word?length={length}&number=180000"
     req = requests.get(url)
     if req.status_code == 200:
         return req.json()
@@ -58,25 +58,28 @@ def aStar (beginWord : str, endWord: str, wordList: List[str])-> Dict:
     if endWord not in wordList:
         return {"optimal":0,"path":[]}
 
-    visited = set([beginWord])
+    visited = {beginWord:0}
     nei = buildAdjacencyList(wordList)
     startFn = heuristic(beginWord,endWord)
-    heap = [(startFn,beginWord,[beginWord])]
+    heap = [(startFn,beginWord,0,[{beginWord:0}])]
 
     while heap:
-        _ , startWord, path = heappop(heap)
-        gn = len(path)
+        _ , startWord,gn, path= heappop(heap)
 
         if startWord == endWord:
             return {"optimal":gn,"path":path}
-        
+
         for j in range(len(startWord)):
             pattern = startWord[:j] + "*" + startWord[j + 1:]
             for neiWord in nei[pattern]:
-                if neiWord not in visited:
-                    visited.add(neiWord)
+                if neiWord not in visited or gn + 1 < visited[neiWord]:
+                    visited[neiWord] = gn + 1
                     hn = heuristic(neiWord,endWord)
-                    heappush(heap,(fn(gn,hn),neiWord,path+[neiWord]))
+                    if is_one_letter_different(startWord,neiWord):
+                        changedIndex = find_differing_index(startWord,neiWord)
+                        new_path = path.copy()
+                        new_path.append({neiWord: changedIndex})
+                    heappush(heap,(fn(gn,hn),neiWord,gn+1,new_path))
 
     return {"optimal":0,"path":[]}
     
@@ -89,7 +92,7 @@ def bfsWordLadder(beginWord: str, endWord: str, wordList: List[str]) -> Dict:
     wordList.append(beginWord)
     nei = buildAdjacencyList(wordList)
     visited = set([beginWord])
-    queue = deque([(beginWord, [beginWord])])
+    queue = deque([(beginWord, [{beginWord:0}])])
 
     while queue:
         word, path = queue.popleft()
@@ -101,7 +104,11 @@ def bfsWordLadder(beginWord: str, endWord: str, wordList: List[str]) -> Dict:
             for neiWord in nei[pattern]:
                 if neiWord not in visited:
                     visited.add(neiWord)
-                    queue.append((neiWord, path + [neiWord]))
+                    if is_one_letter_different(word,neiWord):
+                        changedIndex = find_differing_index(word,neiWord)
+                        new_path = path.copy()
+                        new_path.append({neiWord:changedIndex})
+                    queue.append((neiWord,new_path))
 
     return {"optimal": 0, "path": []}
 
@@ -132,7 +139,10 @@ def bidirectionalBfsWordLadder(beginWord: str, endWord: str, wordList: List[str]
                     
                     if newWord in wordSet and newWord not in visited:
                         visited.add(newWord)
-                        next_front[newWord] = path + [newWord]
+                        changedIndex = j
+                        new_path = path.copy()
+                        new_path.append({newWord: changedIndex})
+                        next_front[newWord] = new_path
 
         front = next_front
 
@@ -232,14 +242,23 @@ def check_word(word: str = Query(..., min_length=1),previous: str = Query(..., m
 @app.get("/game")
 async def game(
     length: Optional[int] = Query(None, ge=3, le=6),
-    blind: str = Query("bfs", pattern="^(bfs|bidirectional)$"),
+    blind: Optional[str] = Query(None, pattern="^(bfs|bidirectional)$"),
     startWord: Optional[str] = Query(None),
     endWord: Optional[str] = Query(None),
+    heuristic:Optional[str] = Query(None,pattern="^(astar)$")
 ):
+
+    #manual play
+    if not any([blind, heuristic, startWord, endWord]):
+            word_length = length or 4  # Default length = 4 ถ้าไม่ได้กำหนด
+            startWord, endWord = fetchRandomWords(word_length)
+            return {"startword": startWord, "endword": endWord}
+
     try:
         user_provided_start = startWord is not None
         user_provided_end = endWord is not None
 
+        result_dict = {"blind": {}, "heuristic": {}}
         while True:  # Keep retrying if no valid path is found
             # Determine word length
             if startWord and endWord:
@@ -290,12 +309,43 @@ async def game(
                 result, time_taken, memory_used = measure(
                     bfsWordLadder, startWord, endWord, wordList
                 )
-                technique = "BFS"
-            else:
+                result_dict["blind"] = {
+                    "technique": "BFS",
+                    "startword": startWord,
+                    "endword": endWord,
+                    "optimal": result["optimal"],
+                    "path": result["path"],
+                    "space": f"{memory_used:.2f} KB",
+                    "time": f"{time_taken:.4f} sec",
+                }
+            #
+            if blind == "bidirectional":
                 result, time_taken, memory_used = measure(
                     bidirectionalBfsWordLadder, startWord, endWord, wordList
                 )
-                technique = "Bidirectional BFS"
+                result_dict["blind"] = {
+                    "technique": "Bidirectional BFS",
+                    "startword": startWord,
+                    "endword": endWord,
+                    "optimal": result["optimal"],
+                    "path": result["path"],
+                    "space": f"{memory_used:.2f} KB",
+                    "time": f"{time_taken:.4f} sec",
+                }
+            #heuristic search
+            if heuristic:
+                result, time_taken, memory_used = measure(
+                    aStar, startWord, endWord, wordList
+                )
+                result_dict["heuristic"] = {
+                    "technique": "A* Search",
+                    "startword": startWord,
+                    "endword": endWord,
+                    "optimal": result["optimal"],
+                    "path": result["path"],
+                    "space": f"{memory_used:.2f} KB",
+                    "time": f"{time_taken:.4f} sec",
+            }
 
             # If no valid path is found, retry **only missing words**
             if result["optimal"] <= 0:
@@ -315,34 +365,7 @@ async def game(
                     _, endWord = fetchRandomWords(word_length)
 
                 continue  # Retry with the new values
-
-            # Store results
-            blind_result = {
-                "technique": technique,
-                "startword": startWord,
-                "endword": endWord,
-                "optimal": result["optimal"],
-                "path": result["path"],
-                "space": f"{memory_used:.2f} KB",
-                "time": f"{time_taken:.4f} sec",
-            }
-
-            # Heuristic Search (A* Search)
-            result, time_taken, memory_used = measure(
-                aStar, startWord, endWord, wordList
-            )
-
-            heuristic_result = {
-                "technique": "A* Search",
-                "startword": startWord,
-                "endword": endWord,
-                "optimal": result["optimal"],
-                "path": result["path"], 
-                "space": f"{memory_used:.2f} KB",
-                "time": f"{time_taken:.4f} sec",
-            }
-
-            return {"blind": blind_result, "heuristic": heuristic_result}
+            return result_dict
 
     except Exception as e:
         raise HTTPException(
