@@ -4,7 +4,7 @@ RUN mkdir -p /wordladder_api
 
 WORKDIR /wordladder_api
 
-COPY ./requirement.txt .
+COPY . .
 
 RUN pip install --no-cache-dir -r /wordladder_api/requirement.txt
 
