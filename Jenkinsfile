@@ -11,7 +11,7 @@ pipeline {
 
         stage('Run Image') {
             steps {
-                sh "docker run -d --name ${APP_NAME} -p 8000:8000 api_image"
+                sh "docker run -d --name wordladder-api -p 8000:8000 api_image"
             }
         }
     }
