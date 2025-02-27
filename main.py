@@ -180,7 +180,7 @@ app = FastAPI()
 
 @app.get("/")
 def hello_world():
-    template ={"blind":{"technique":"BFS","startword":"poke","endword":"blow","optimal":6,"path":[{"poke":0},{"pole":2},{"bole":0},{"bolt":3},{"boot":2},{"blot":1},{"blow":3}],"space":"1890.75 KB","time":"0.1766 sec"},"heuristic":{"technique":"A* Search","startword":"poke","endword":"blow","optimal":6,"path":[{"poke":0},{"pole":2},{"bole":0},{"bolt":3},{"boot":2},{"blot":1},{"blow":3}],"space":"1351.89 KB","time":"0.0660 sec"}}
+    template = {"blind":{"technique":"BFS","startword":"poke","endword":"blow","optimal":6,"path":[{"poke":0},{"pole":2},{"bole":0},{"bolt":3},{"boot":2},{"blot":1},{"blow":3}],"space":"1890.75 KB","time":"0.1766 sec"},"heuristic":{"technique":"A* Search","startword":"poke","endword":"blow","optimal":6,"path":[{"poke":0},{"pole":2},{"bole":0},{"bolt":3},{"boot":2},{"blot":1},{"blow":3}],"space":"1351.89 KB","time":"0.0660 sec"}}
     return template
 
 @app.get("/check")
