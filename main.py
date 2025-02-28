@@ -253,7 +253,7 @@ async def game(
     endWord: Optional[str] = Query(None),
     heuristic: Optional[str] = Query("astar", pattern="^(astar)$")
 ):
-    try:
+    # try:
         # Convert input words to lowercase if provided
         startWord = startWord.lower() if startWord else None
         endWord = endWord.lower() if endWord else None
@@ -376,7 +376,7 @@ async def game(
 
             return result_dict
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"An unexpected error occurred: {str(e)}"
-        )
+    # except Exception as e:
+    #     raise HTTPException(
+    #         status_code=500, detail=f"An unexpected error occurred: {str(e)}"
+    #     )
