@@ -146,7 +146,7 @@ uvicorn main:app
 }
 
 ```
-#### json response of /game
+#### json response of /check
 ```json
  {
   "word": "sing",
