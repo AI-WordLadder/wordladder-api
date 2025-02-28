@@ -180,37 +180,61 @@ app = FastAPI()
 
 @app.get("/")
 def hello_world():
-    template = {"blind":{"technique":"BFS","startword":"poke","endword":"blow","optimal":6,"path":[{"poke":0},{"pole":2},{"bole":0},{"bolt":3},{"boot":2},{"blot":1},{"blow":3}],"space":"1890.75 KB","time":"0.1766 sec"},"heuristic":{"technique":"A* Search","startword":"poke","endword":"blow","optimal":6,"path":[{"poke":0},{"pole":2},{"bole":0},{"bolt":3},{"boot":2},{"blot":1},{"blow":3}],"space":"1351.89 KB","time":"0.0660 sec"}}
+    template = {
+        "blind": {
+            "technique": "BFS",
+            "startword": "poke",
+            "endword": "blow",
+            "optimal": 6,
+            "path": [{"poke": 0}, {"pole": 2}, {"bole": 0}, {"bolt": 3}, {"boot": 2}, {"blot": 1}, {"blow": 3}],
+            "space": "1890.75 KB",
+            "time": "0.1766 sec"
+        },
+        "heuristic": {
+            "technique": "A* Search",
+            "startword": "poke",
+            "endword": "blow",
+            "optimal": 6,
+            "path": [{"poke": 0}, {"pole": 2}, {"bole": 0}, {"bolt": 3}, {"boot": 2}, {"blot": 1}, {"blow": 3}],
+            "space": "1351.89 KB",
+            "time": "0.0660 sec"
+        }
+    }
     return template
 
+
 @app.get("/check")
-def check_word(word: str = Query(..., min_length=1),previous: str = Query(..., min_length=1)):
+def check_word(
+    word: str = Query(..., min_length=1),
+    previous: str = Query(..., min_length=1)
+):
     try:
+        word = word.lower()  # Convert to lowercase
+        previous = previous.lower()  # Convert previous word to lowercase
+
         wordList = fetchWordList(len(word))
         if not wordList:
             raise HTTPException(status_code=404, detail=f"No word list found for length {len(word)}.")
-        
-        # Check word diff by one letter
+
+        # Check if word differs by only one letter
         if not is_one_letter_different(word, previous):
             return {
                 "word": word,
                 "valid": False,
                 "message": "Cannot change more than 1 character"
             }
-            
-        # Check word is in word list
+
+        # Check if word is in word list
         if word not in wordList:
             return {
                 "word": word,
                 "valid": False,
                 "reason": "Not in word list"
             }
-            
-            
-        # Find the diff index
+
+        # Find the differing index
         change_index = find_differing_index(word, previous)
-        
-        # all checks pass
+
         return {
             "word": word,
             "valid": True,
@@ -218,37 +242,34 @@ def check_word(word: str = Query(..., min_length=1),previous: str = Query(..., m
             "change": change_index
         }
     except Exception as e:
-        # Handle unexpected errors
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
 @app.get("/game")
 async def game(
-    length: Optional[int] = Query(None, ge=3, le=6), # Word length can be 3 - 6
+    length: Optional[int] = Query(None, ge=3, le=6),
     blind: Optional[str] = Query("bfs", pattern="^(bfs|bidirectional)$"),
     startWord: Optional[str] = Query(None),
     endWord: Optional[str] = Query(None),
-    heuristic:Optional[str] = Query("astar",pattern="^(astar)$")
+    heuristic: Optional[str] = Query("astar", pattern="^(astar)$")
 ):
-
-    #manual play
-    # if not any([blind, heuristic, startWord, endWord]):
-    #         word_length = length or 4  # Default length = 4 ถ้าไม่ได้กำหนด
-    #         startWord, endWord = fetchRandomWords(word_length)
-    #         return {"startword": startWord, "endword": endWord}
-
     try:
+        # Convert input words to lowercase if provided
+        startWord = startWord.lower() if startWord else None
+        endWord = endWord.lower() if endWord else None
+
         user_provided_start = startWord is not None
         user_provided_end = endWord is not None
 
         result_dict = {"blind": {}, "heuristic": {}}
+
         while True:  # Keep retrying if no valid path is found
             # Determine word length
             if startWord and endWord:
                 if len(startWord) != len(endWord):
                     raise HTTPException(
                         status_code=400,
-                        detail="StartWord and EndWord must have the same length.",
+                        detail="StartWord and EndWord must have the same length."
                     )
                 word_length = len(startWord)
             elif startWord:
@@ -263,27 +284,29 @@ async def game(
             if not wordList:
                 raise HTTPException(
                     status_code=404,
-                    detail=f"No word list found for length {word_length}.",
+                    detail=f"No word list found for length {word_length}."
                 )
 
             # Validate provided words
             if startWord and startWord not in wordList:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"StartWord '{startWord}' is not in the word list.",
+                    detail=f"StartWord '{startWord}' is not in the word list."
                 )
 
             if endWord and endWord not in wordList:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"EndWord '{endWord}' is not in the word list.",
+                    detail=f"EndWord '{endWord}' is not in the word list."
                 )
 
-            # Generate missing words
+            # Generate missing words (convert them to lowercase)
             if not startWord:
                 startWord, _ = fetchRandomWords(word_length)
+                startWord = startWord.lower()
             if not endWord:
                 _, endWord = fetchRandomWords(word_length)
+                endWord = endWord.lower()
 
             print(f"Trying Start Word: {startWord}, End Word: {endWord}")
 
@@ -314,7 +337,8 @@ async def game(
                     "space": f"{memory_used:.2f} KB",
                     "time": f"{time_taken:.4f} sec",
                 }
-            #heuristic search
+
+            # Heuristic search
             if heuristic:
                 result, time_taken, memory_used = measure(
                     aStar, startWord, endWord, wordList
@@ -327,7 +351,7 @@ async def game(
                     "path": result["path"],
                     "space": f"{memory_used:.2f} KB",
                     "time": f"{time_taken:.4f} sec",
-            }
+                }
 
             # If no valid path is found, retry **only missing words**
             if result["optimal"] <= 0:
@@ -337,20 +361,22 @@ async def game(
                 if user_provided_start and user_provided_end:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"No valid path found between '{startWord}' and '{endWord}'.",
+                        detail=f"No valid path found between '{startWord}' and '{endWord}'."
                     )
 
                 # Regenerate missing words only
                 if not user_provided_start:
                     startWord, _ = fetchRandomWords(word_length)
+                    startWord = startWord.lower()
                 if not user_provided_end:
                     _, endWord = fetchRandomWords(word_length)
+                    endWord = endWord.lower()
 
                 continue  # Retry with the new values
+
             return result_dict
 
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"An unexpected error occurred: {str(e)}"
         )
-
