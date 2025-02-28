@@ -78,6 +78,7 @@ uvicorn main:app
 
 ## 📄 Body Response Example
 
+#### json response of /game
 ```json
 {
   "blind": {
@@ -145,8 +146,14 @@ uvicorn main:app
 }
 
 ```
-
-  
+#### json response of /game
+```json
+ {
+  "word": "sing",
+  "valid": false,
+  "message": "Cannot change more than 1 character"
+} 
+```
 
 ## 🔎 Notes
 
