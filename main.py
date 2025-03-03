@@ -218,11 +218,18 @@ def check_word(
 
         # Check if word differs by only one letter
         if not is_one_letter_different(word, previous):
-            return {
-                "word": word,
-                "valid": False,
-                "message": "Cannot change more than 1 character"
-            }
+            if word != previous:
+                return {
+                    "word": word,
+                    "valid": False,
+                    "message": "Cannot change more than 1 character"
+                }
+            else:
+                {
+                    "word": word,
+                    "valid": False,
+                    "message": "Did not change any characters"
+                }
 
         # Check if word is in word list
         if word not in wordList:
@@ -231,12 +238,7 @@ def check_word(
                 "valid": False,
                 "message": "Not in word list"
             }
-        else:
-            {
-                "word": word,
-                "valid": False,
-                "message": "Did not change any characters"
-            }
+
         # Find the differing index
         change_index = find_differing_index(word, previous)
 
