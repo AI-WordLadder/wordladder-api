@@ -6,6 +6,13 @@ pipeline {
     }
 
     stages {
+        stage('Restart image') {
+            steps {
+                sh "docker stop wordladder-api"
+                sh "docker rm wordladder-api"
+            }
+        }
+
         stage('Create Image') {
             steps {
                 sh "ls -la"
