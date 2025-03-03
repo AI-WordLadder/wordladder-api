@@ -231,7 +231,12 @@ def check_word(
                 "valid": False,
                 "message": "Not in word list"
             }
-
+        else:
+            {
+                "word": word,
+                "valid": False,
+                "message": "Did not change any characters"
+            }
         # Find the differing index
         change_index = find_differing_index(word, previous)
 
