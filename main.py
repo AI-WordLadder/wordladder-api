@@ -203,7 +203,7 @@ def check_word(word: str = Query(..., min_length=1),previous: str = Query(..., m
             return {
                 "word": word,
                 "valid": False,
-                "reason": "Not in word list"
+                "message": "Not in word list"
             }
             
             
