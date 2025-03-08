@@ -216,20 +216,21 @@ def check_word(
         if not wordList:
             raise HTTPException(status_code=404, detail=f"No word list found for length {len(word)}.")
 
+        # word are identical
+        if word == previous:
+            return {
+                "word": word,
+                "valid": False,
+                "message": "Did not change any characters"
+            }
+
         # Check if word differs by only one letter
         if not is_one_letter_different(word, previous):
-            if word != previous:
-                return {
-                    "word": word,
-                    "valid": False,
-                    "message": "Cannot change more than 1 character"
-                }
-            else:
-                {
-                    "word": word,
-                    "valid": False,
-                    "message": "Did not change any characters"
-                }
+            return {
+                "word": word,
+                "valid": False,
+                "message": "Cannot change more than 1 character"
+            }
 
         # Check if word is in word list
         if word not in wordList:
@@ -246,10 +247,11 @@ def check_word(
             "word": word,
             "valid": True,
             "message": f"The word '{word}' is valid.",
-            "change": change_index
+            "change_index": change_index  # Ensure it's returning the correct change index
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
 
 
 @app.get("/game")
